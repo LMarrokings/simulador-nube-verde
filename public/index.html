@@ -7,797 +7,328 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --primary: #10b981;
-            --primary-dark: #059669;
-            --primary-light: #d1fae5;
-            --secondary: #6366f1;
-            --accent: #f59e0b;
-            --danger: #ef4444;
-            --bg-dark: #0f172a;
-            --bg-card: #1e293b;
-            --bg-input: #334155;
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --border: #475569;
+            --primary: #10b981; --primary-dark: #059669;
+            --secondary: #6366f1; --danger: #ef4444;
+            --bg-dark: #0f172a; --bg-card: #1e293b; --bg-input: #334155;
+            --text-primary: #f1f5f9; --text-secondary: #94a3b8; --border: #475569;
             --gradient-1: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
             --gradient-2: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
         }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-primary); min-height: 100vh; }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            min-height: 100vh;
-        }
+        /* LOGIN */
+        .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 1rem; }
+        .login-container { width: 100%; max-width: 420px; }
+        .login-card { background: var(--bg-card); border-radius: 24px; padding: 2.5rem; box-shadow: var(--shadow); border: 1px solid var(--border); }
+        .login-header { text-align: center; margin-bottom: 2rem; }
+        .login-logo { width: 80px; height: 80px; background: var(--gradient-1); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2.5rem; color: white; }
+        .login-header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .login-header p { color: var(--text-secondary); font-size: 0.95rem; }
+        .login-form .form-group { margin-bottom: 1.25rem; }
+        .login-form label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.5rem; }
+        .input-icon-wrapper { position: relative; }
+        .input-icon-wrapper i { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+        .input-icon-wrapper input { padding-left: 2.75rem; }
+        .login-form .form-control { width: 100%; padding: 0.875rem 1rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; color: var(--text-primary); font-size: 1rem; transition: all 0.2s; }
+        .login-form .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); }
+        .login-form .form-control::placeholder { color: var(--text-secondary); }
+        .login-error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.9rem; margin-bottom: 1rem; display: none; align-items: center; gap: 0.5rem; }
+        .login-error.show { display: flex; }
+        .btn-login { width: 100%; padding: 1rem; background: var(--gradient-1); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .btn-login:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); }
+        .btn-login:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        .btn-login .spinner { display: none; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .btn-login.loading .spinner { display: block; }
+        .btn-login.loading .btn-text { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .login-footer { text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+        .login-footer p { color: var(--text-secondary); font-size: 0.85rem; }
+        .login-footer i { color: var(--primary); }
 
-        /* Header */
-        .header {
-            background: var(--gradient-1);
-            padding: 1.5rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: var(--shadow-lg);
-        }
+        /* APP */
+        .app-screen { display: none; }
+        .app-screen.active { display: block; }
+        .login-screen.hidden { display: none; }
 
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
+        .header { background: var(--gradient-1); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); flex-wrap: wrap; gap: 1rem; }
+        .logo { display: flex; align-items: center; gap: 0.75rem; }
+        .logo i { font-size: 2rem; color: white; }
+        .logo-text h1 { font-size: 1.25rem; font-weight: 700; color: white; }
+        .logo-text span { font-size: 0.8rem; opacity: 0.9; color: white; }
+        .header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .user-info { display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.15); padding: 0.5rem 1rem; border-radius: 50px; color: white; font-size: 0.85rem; }
+        .btn-logout { background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem; }
+        .btn-logout:hover { background: rgba(255,255,255,0.3); }
+        .status-badge { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 50px; font-weight: 500; font-size: 0.85rem; background: rgba(255,255,255,0.2); color: white; }
+        .status-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; animation: pulse 2s infinite; }
+        .status-badge.running .dot { background: #4ade80; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-        .logo i {
-            font-size: 2.5rem;
-            color: white;
-        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
 
-        .logo-text h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: white;
-        }
+        .card { background: var(--bg-card); border-radius: 16px; padding: 1.25rem; box-shadow: var(--shadow); border: 1px solid var(--border); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .card-title { font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem; }
+        .card-title i { color: var(--primary); }
 
-        .logo-text span {
-            font-size: 0.85rem;
-            opacity: 0.9;
-            color: white;
-        }
-
-        .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 50px;
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-        .status-badge.offline {
-            background: rgba(255,255,255,0.2);
-            color: white;
-        }
-
-        .status-badge.online {
-            background: white;
-            color: var(--primary-dark);
-        }
-
-        .status-badge .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        .status-badge.offline .dot { background: #fbbf24; }
-        .status-badge.online .dot { background: var(--primary); }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        /* Main Container */
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        /* Grid Layout */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }
-
-        @media (max-width: 900px) {
-            .grid-2 { grid-template-columns: 1fr; }
-        }
-
-        /* Cards */
-        .card {
-            background: var(--bg-card);
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.25rem;
-        }
-
-        .card-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .card-title i {
-            color: var(--primary);
-        }
-
-        /* Stats Cards */
-        .stat-card {
-            background: var(--bg-card);
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-        }
-
+        .stat-card { background: var(--bg-card); border-radius: 16px; padding: 1.25rem; box-shadow: var(--shadow); border: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+        .stat-icon { width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: white; }
         .stat-icon.green { background: var(--gradient-1); }
         .stat-icon.purple { background: var(--gradient-2); }
         .stat-icon.orange { background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); }
         .stat-icon.blue { background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%); }
+        .stat-info h3 { font-size: 1.5rem; font-weight: 700; }
+        .stat-info p { color: var(--text-secondary); font-size: 0.8rem; }
 
-        .stat-info h3 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
-        }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.4rem; }
+        .form-control { width: 100%; padding: 0.65rem 0.875rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 0.9rem; transition: all 0.2s; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 
-        .stat-info p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
+        .toggle-group { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+        .toggle-label { font-size: 0.9rem; }
+        .toggle { position: relative; width: 44px; height: 24px; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--bg-input); border-radius: 50px; transition: 0.3s; }
+        .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        .toggle input:checked + .toggle-slider { background: var(--primary); }
+        .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
 
-        /* Form Elements */
-        .form-group {
-            margin-bottom: 1rem;
-        }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem 1.25rem; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; border: none; }
+        .btn-primary { background: var(--gradient-1); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
+        .btn-secondary { background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .btn-group { display: flex; gap: 0.75rem; margin-top: 1rem; }
+        .btn-group .btn { flex: 1; }
 
-        .form-group label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
-        }
+        .mode-tabs { display: flex; background: var(--bg-input); border-radius: 10px; padding: 4px; margin-bottom: 1rem; }
+        .mode-tab { flex: 1; padding: 0.6rem; text-align: center; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 0.85rem; transition: all 0.2s; color: var(--text-secondary); }
+        .mode-tab.active { background: var(--primary); color: white; }
+        .mode-content { display: none; }
+        .mode-content.active { display: block; }
 
-        .form-control {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            color: var(--text-primary);
-            font-size: 0.95rem;
-            transition: all 0.2s;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-
-        /* Checkbox Toggle */
-        .toggle-group {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .toggle-label {
-            font-size: 0.95rem;
-            color: var(--text-primary);
-        }
-
-        .toggle {
-            position: relative;
-            width: 50px;
-            height: 26px;
-        }
-
-        .toggle input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            inset: 0;
-            background: var(--bg-input);
-            border-radius: 50px;
-            transition: 0.3s;
-        }
-
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 20px;
-            width: 20px;
-            left: 3px;
-            bottom: 3px;
-            background: white;
-            border-radius: 50%;
-            transition: 0.3s;
-        }
-
-        .toggle input:checked + .toggle-slider {
-            background: var(--primary);
-        }
-
-        .toggle input:checked + .toggle-slider:before {
-            transform: translateX(24px);
-        }
-
-        /* Buttons */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 0.875rem 1.5rem;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-        }
-
-        .btn-primary {
-            background: var(--gradient-1);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-        }
-
-        .btn-secondary {
-            background: var(--bg-input);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: var(--border);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-
-        .btn-group .btn {
-            flex: 1;
-        }
-
-        /* Monitor Table */
-        .monitor-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .monitor-table th {
-            text-align: left;
-            padding: 0.75rem 1rem;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .monitor-table td {
-            padding: 0.875rem 1rem;
-            font-size: 0.9rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .monitor-table tr:hover {
-            background: rgba(255,255,255,0.02);
-        }
-
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.25rem 0.75rem;
-            border-radius: 50px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .status-pill.activo {
-            background: rgba(16, 185, 129, 0.15);
-            color: #34d399;
-        }
-
-        .status-pill.inactivo {
-            background: rgba(148, 163, 184, 0.15);
-            color: #94a3b8;
-        }
-
-        .status-pill.error {
-            background: rgba(239, 68, 68, 0.15);
-            color: #f87171;
-        }
-
-        .status-pill .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-        }
-
+        .monitor-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .monitor-table th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        .monitor-table td { padding: 0.7rem 0.75rem; border-bottom: 1px solid var(--border); }
+        .status-pill { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 50px; font-size: 0.75rem; font-weight: 500; }
+        .status-pill.activo { background: rgba(16,185,129,0.15); color: #34d399; }
+        .status-pill.inactivo { background: rgba(148,163,184,0.15); color: #94a3b8; }
+        .status-pill.error { background: rgba(239,68,68,0.15); color: #f87171; }
+        .status-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
         .status-pill.activo .dot { background: #34d399; }
         .status-pill.inactivo .dot { background: #94a3b8; }
         .status-pill.error .dot { background: #f87171; }
 
-        /* Logs */
-        .log-container {
-            height: 250px;
-            overflow-y: auto;
-            background: var(--bg-input);
-            border-radius: 10px;
-            padding: 1rem;
-            font-family: 'Monaco', 'Consolas', monospace;
-            font-size: 0.85rem;
-        }
-
-        .log-entry {
-            padding: 0.35rem 0;
-            display: flex;
-            gap: 0.75rem;
-        }
-
-        .log-entry .time {
-            color: var(--text-secondary);
-            flex-shrink: 0;
-        }
-
+        .log-container { height: 220px; overflow-y: auto; background: var(--bg-input); border-radius: 8px; padding: 0.75rem; font-family: 'Monaco', 'Consolas', monospace; font-size: 0.8rem; }
+        .log-entry { padding: 0.25rem 0; display: flex; gap: 0.5rem; }
+        .log-entry .time { color: var(--text-secondary); flex-shrink: 0; }
         .log-entry.success .msg { color: #34d399; }
         .log-entry.error .msg { color: #f87171; }
         .log-entry.warning .msg { color: #fbbf24; }
         .log-entry.info .msg { color: #60a5fa; }
 
-        /* Points Grid */
-        .points-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 0.75rem;
-        }
+        .points-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.5rem; max-height: 300px; overflow-y: auto; }
+        .point-chip { background: var(--bg-input); border-radius: 10px; padding: 0.6rem; text-align: center; border: 2px solid var(--border); transition: all 0.2s; cursor: pointer; position: relative; }
+        .point-chip:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .point-chip.active { border-color: var(--primary); background: rgba(16, 185, 129, 0.1); }
+        .point-chip.inactive { opacity: 0.6; border-color: var(--border); }
+        .point-chip .id { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.2rem; }
+        .point-chip .name { font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.4rem; }
+        .point-chip .power-icon { font-size: 1.2rem; margin-top: 0.3rem; }
+        .point-chip.active .power-icon { color: #34d399; }
+        .point-chip.inactive .power-icon { color: #94a3b8; }
+        .point-chip.loading { pointer-events: none; opacity: 0.7; }
+        .point-chip .loading-spinner { display: none; }
+        .point-chip.loading .loading-spinner { display: inline-block; animation: spin 0.8s linear infinite; }
+        .point-chip.loading .power-icon { display: none; }
+        .points-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.5rem; }
+        .points-actions { display: flex; gap: 0.5rem; }
+        .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.75rem; border-radius: 6px; }
 
-        .point-chip {
-            background: var(--bg-input);
-            border-radius: 10px;
-            padding: 0.75rem;
-            text-align: center;
-            border: 1px solid var(--border);
-            transition: all 0.2s;
-        }
-
-        .point-chip.active {
-            border-color: var(--primary);
-            background: rgba(16, 185, 129, 0.1);
-        }
-
-        .point-chip.inactive {
-            opacity: 0.5;
-        }
-
-        .point-chip .id {
-            font-weight: 600;
-            font-size: 1rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .point-chip .name {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Mode Tabs */
-        .mode-tabs {
-            display: flex;
-            background: var(--bg-input);
-            border-radius: 10px;
-            padding: 4px;
-            margin-bottom: 1.5rem;
-        }
-
-        .mode-tab {
-            flex: 1;
-            padding: 0.75rem;
-            text-align: center;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s;
-            color: var(--text-secondary);
-        }
-
-        .mode-tab.active {
-            background: var(--primary);
-            color: white;
-        }
-
-        .mode-tab:not(.active):hover {
-            background: rgba(255,255,255,0.05);
-        }
-
-        .mode-content {
-            display: none;
-        }
-
-        .mode-content.active {
-            display: block;
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-input);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-secondary);
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-in {
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-secondary);
-        }
-
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
+        .empty-state { text-align: center; padding: 2rem; color: var(--text-secondary); }
+        .empty-state i { font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: fadeIn 0.3s ease-out; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-input); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="logo">
-            <i class="fas fa-leaf"></i>
-            <div class="logo-text">
-                <h1>Nube Verde</h1>
-                <span>Simulador IoT de Consumo Energético</span>
-            </div>
-        </div>
-        <div id="statusBadge" class="status-badge offline">
-            <span class="dot"></span>
-            <span id="statusText">Desconectado</span>
-        </div>
-    </header>
-
-    <div class="container">
-        <!-- Stats Cards -->
-        <div class="grid" style="margin-bottom: 1.5rem;">
-            <div class="stat-card">
-                <div class="stat-icon green">
-                    <i class="fas fa-paper-plane"></i>
+    <!-- LOGIN -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="login-logo"><i class="fas fa-leaf"></i></div>
+                    <h1>Nube Verde</h1>
+                    <p>Simulador IoT de Consumo Energético</p>
                 </div>
-                <div class="stat-info">
-                    <h3 id="totalEnviadas">0</h3>
-                    <p>Lecturas Enviadas</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon purple">
-                    <i class="fas fa-map-marker-alt"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="puntosCount">0</h3>
-                    <p>Puntos Activos</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon orange">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="ultimaLectura">--:--:--</h3>
-                    <p>Última Lectura</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon blue">
-                    <i class="fas fa-bolt"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="intervaloActual">10s</h3>
-                    <p>Intervalo</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid-2">
-            <!-- Configuration Panel -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">
-                        <i class="fas fa-cog"></i>
-                        Configuración
-                    </h2>
-                </div>
-
-                <!-- Mode Tabs -->
-                <div class="mode-tabs">
-                    <div class="mode-tab active" data-mode="realtime" onclick="cambiarModo('realtime')">
-                        <i class="fas fa-clock"></i> Tiempo Real
+                <form id="loginForm" class="login-form">
+                    <div id="loginError" class="login-error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span id="loginErrorText">Error</span>
                     </div>
-                    <div class="mode-tab" data-mode="historico" onclick="cambiarModo('historico')">
-                        <i class="fas fa-calendar"></i> Histórico
-                    </div>
-                </div>
-
-                <!-- Tiempo Real Config -->
-                <div id="realtimeConfig" class="mode-content active">
                     <div class="form-group">
-                        <label>Intervalo de envío (segundos)</label>
-                        <input type="number" id="intervalo" class="form-control" value="10" min="5" max="300">
-                    </div>
-                </div>
-
-                <!-- Histórico Config -->
-                <div id="historicoConfig" class="mode-content">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Fecha Inicio</label>
-                            <input type="datetime-local" id="fechaInicio" class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <label>Fecha Fin</label>
-                            <input type="datetime-local" id="fechaFin" class="form-control">
+                        <label>Correo electrónico</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="loginEmail" class="form-control" placeholder="usuario@nubeverde.local" required>
                         </div>
                     </div>
-                </div>
-
-                <!-- Opciones comunes -->
-                <div class="toggle-group">
-                    <span class="toggle-label">Simular picos de consumo</span>
-                    <label class="toggle">
-                        <input type="checkbox" id="simularPicos" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-
-                <div class="toggle-group">
-                    <span class="toggle-label">Factor fin de semana</span>
-                    <label class="toggle">
-                        <input type="checkbox" id="factorFinSemana" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-
-                <div class="form-row" style="margin-top: 1rem;">
                     <div class="form-group">
-                        <label>Factor Pico (1.0 - 3.0)</label>
-                        <input type="number" id="factorPico" class="form-control" value="1.5" min="1" max="3" step="0.1">
+                        <label>Contraseña</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Factor Fin Semana (0.1 - 1.0)</label>
-                        <input type="number" id="factorFinSemanaVal" class="form-control" value="0.3" min="0.1" max="1" step="0.1">
-                    </div>
-                </div>
-
-                <div class="btn-group">
-                    <button id="btnIniciar" class="btn btn-primary" onclick="iniciarSimulador()">
-                        <i class="fas fa-play"></i> Iniciar
+                    <button type="submit" id="btnLogin" class="btn-login">
+                        <span class="spinner"></span>
+                        <span class="btn-text"><i class="fas fa-sign-in-alt"></i> Iniciar Sesión</span>
                     </button>
-                    <button id="btnDetener" class="btn btn-danger" onclick="detenerSimulador()" disabled>
-                        <i class="fas fa-stop"></i> Detener
-                    </button>
-                </div>
-            </div>
-
-            <!-- Puntos de Monitoreo -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">
-                        <i class="fas fa-map-marker-alt"></i>
-                        Puntos de Monitoreo
-                    </h2>
-                </div>
-                <div id="puntosGrid" class="points-grid">
-                    <div class="empty-state">
-                        <i class="fas fa-satellite-dish"></i>
-                        <p>Inicia el simulador para cargar los puntos</p>
-                    </div>
-                </div>
+                </form>
+                <div class="login-footer"><p><i class="fas fa-shield-alt"></i> Autenticación Firebase</p></div>
             </div>
         </div>
+    </div>
 
-        <div class="grid-2" style="margin-top: 1.5rem;">
-            <!-- Monitor de Lecturas -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">
-                        <i class="fas fa-broadcast-tower"></i>
-                        Monitor en Vivo
-                    </h2>
+    <!-- APP -->
+    <div id="appScreen" class="app-screen">
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-leaf"></i>
+                <div class="logo-text"><h1>Nube Verde</h1><span>Simulador IoT</span></div>
+            </div>
+            <div class="header-right">
+                <div id="statusBadge" class="status-badge"><span class="dot"></span><span id="statusText">Detenido</span></div>
+                <div class="user-info"><i class="fas fa-user-circle"></i><span id="userEmail">usuario</span></div>
+                <button class="btn-logout" onclick="cerrarSesion()"><i class="fas fa-sign-out-alt"></i> Salir</button>
+            </div>
+        </header>
+        <div class="container">
+            <div class="grid">
+                <div class="stat-card"><div class="stat-icon green"><i class="fas fa-paper-plane"></i></div><div class="stat-info"><h3 id="totalEnviadas">0</h3><p>Lecturas Enviadas</p></div></div>
+                <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-map-marker-alt"></i></div><div class="stat-info"><h3 id="puntosCount">0</h3><p>Puntos Activos</p></div></div>
+                <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-clock"></i></div><div class="stat-info"><h3 id="ultimaLectura">--:--:--</h3><p>Última Lectura</p></div></div>
+                <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-bolt"></i></div><div class="stat-info"><h3 id="intervaloActual">10s</h3><p>Intervalo</p></div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title"><i class="fas fa-cog"></i> Configuración</h2></div>
+                    <div class="mode-tabs">
+                        <div class="mode-tab active" data-mode="realtime" onclick="cambiarModo('realtime')"><i class="fas fa-clock"></i> Tiempo Real</div>
+                        <div class="mode-tab" data-mode="historico" onclick="cambiarModo('historico')"><i class="fas fa-calendar"></i> Histórico</div>
+                    </div>
+                    <div id="realtimeConfig" class="mode-content active">
+                        <div class="form-group"><label>Intervalo (segundos)</label><input type="number" id="intervalo" class="form-control" value="10" min="5" max="300"></div>
+                    </div>
+                    <div id="historicoConfig" class="mode-content">
+                        <div class="form-row">
+                            <div class="form-group"><label>Fecha Inicio</label><input type="datetime-local" id="fechaInicio" class="form-control"></div>
+                            <div class="form-group"><label>Fecha Fin</label><input type="datetime-local" id="fechaFin" class="form-control"></div>
+                        </div>
+                    </div>
+                    <div class="toggle-group"><span class="toggle-label">Simular picos</span><label class="toggle"><input type="checkbox" id="simularPicos" checked><span class="toggle-slider"></span></label></div>
+                    <div class="toggle-group"><span class="toggle-label">Factor fin de semana</span><label class="toggle"><input type="checkbox" id="factorFinSemana" checked><span class="toggle-slider"></span></label></div>
+                    <div class="form-row" style="margin-top:1rem;">
+                        <div class="form-group"><label>Factor Pico</label><input type="number" id="factorPico" class="form-control" value="1.5" min="1" max="3" step="0.1"></div>
+                        <div class="form-group"><label>Factor Fin Semana</label><input type="number" id="factorFinSemanaVal" class="form-control" value="0.3" min="0.1" max="1" step="0.1"></div>
+                    </div>
+                    <div class="btn-group">
+                        <button id="btnIniciar" class="btn btn-primary" onclick="iniciarSimulador()"><i class="fas fa-play"></i> Iniciar</button>
+                        <button id="btnDetener" class="btn btn-danger" onclick="detenerSimulador()" disabled><i class="fas fa-stop"></i> Detener</button>
+                    </div>
                 </div>
-                <div style="max-height: 350px; overflow-y: auto;">
-                    <table class="monitor-table">
-                        <thead>
-                            <tr>
-                                <th>Punto</th>
-                                <th>Consumo</th>
-                                <th>Estado</th>
-                                <th>Hora</th>
-                            </tr>
-                        </thead>
-                        <tbody id="monitorBody">
-                            <tr>
-                                <td colspan="4" class="empty-state" style="padding: 2rem;">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>Sin lecturas aún</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-map-marker-alt"></i> Puntos de Monitoreo</h2>
+                        <div class="points-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="toggleAllPuntos(true)" title="Activar todos"><i class="fas fa-power-off"></i> Todos ON</button>
+                            <button class="btn btn-secondary btn-sm" onclick="toggleAllPuntos(false)" title="Desactivar todos"><i class="fas fa-moon"></i> Todos OFF</button>
+                        </div>
+                    </div>
+                    <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:0.75rem;"><i class="fas fa-info-circle"></i> Click en un punto para encender/apagar</p>
+                    <div id="puntosGrid" class="points-grid"><div class="empty-state"><i class="fas fa-satellite-dish"></i><p>Inicia el simulador</p></div></div>
                 </div>
             </div>
-
-            <!-- Logs -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">
-                        <i class="fas fa-terminal"></i>
-                        Logs del Sistema
-                    </h2>
-                    <button class="btn btn-secondary" onclick="limpiarLogs()" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
-                        <i class="fas fa-trash"></i> Limpiar
-                    </button>
-                </div>
-                <div id="logsContainer" class="log-container">
-                    <div class="log-entry info">
-                        <span class="time">[00:00:00]</span>
-                        <span class="msg">🌿 Sistema listo. Configura y presiona Iniciar.</span>
+            <div class="grid-2" style="margin-top:1rem;">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title"><i class="fas fa-broadcast-tower"></i> Monitor en Vivo</h2></div>
+                    <div style="max-height:280px;overflow-y:auto;">
+                        <table class="monitor-table">
+                            <thead><tr><th>Punto</th><th>Consumo</th><th>Estado</th><th>Hora</th></tr></thead>
+                            <tbody id="monitorBody"><tr><td colspan="4" class="empty-state"><i class="fas fa-inbox"></i><p>Sin lecturas</p></td></tr></tbody>
+                        </table>
                     </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-terminal"></i> Logs</h2>
+                        <button class="btn btn-secondary" onclick="limpiarLogs()" style="padding:0.4rem 0.75rem;font-size:0.75rem;"><i class="fas fa-trash"></i></button>
+                    </div>
+                    <div id="logsContainer" class="log-container"><div class="log-entry info"><span class="time">[00:00:00]</span><span class="msg">🌿 Inicia sesión para comenzar</span></div></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         let modoActual = 'realtime';
 
-        // Conexión Socket
-        socket.on('connect', () => {
-            agregarLog('success', '🔌 Conectado al servidor');
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('btnLogin');
+            const errorDiv = document.getElementById('loginError');
+            btn.classList.add('loading'); btn.disabled = true; errorDiv.classList.remove('show');
+            try {
+                const resp = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+                const data = await resp.json();
+                if (data.success) { mostrarApp(data.email); } 
+                else { document.getElementById('loginErrorText').textContent = data.message; errorDiv.classList.add('show'); }
+            } catch (error) { document.getElementById('loginErrorText').textContent = 'Error de conexión'; errorDiv.classList.add('show'); }
+            finally { btn.classList.remove('loading'); btn.disabled = false; }
         });
 
-        socket.on('disconnect', () => {
-            agregarLog('error', '🔌 Desconectado del servidor');
-            actualizarStatus(false);
-        });
+        function mostrarApp(email) {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('appScreen').classList.add('active');
+            document.getElementById('userEmail').textContent = email;
+            agregarLog('success', `✅ Bienvenido ${email}`);
+        }
+        function mostrarLogin() {
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('appScreen').classList.remove('active');
+        }
+        async function cerrarSesion() { await fetch('/api/logout', { method: 'POST' }); mostrarLogin(); }
 
-        // Eventos del simulador
+        socket.on('connect', () => { agregarLog('info', '🔌 Conectado al servidor'); });
+        socket.on('auth-status', (data) => { if (data.autenticado && data.email) mostrarApp(data.email); });
         socket.on('status', (data) => {
-            actualizarStatus(data.corriendo);
+            const badge = document.getElementById('statusBadge');
+            const text = document.getElementById('statusText');
+            if (data.corriendo) { badge.classList.add('running'); text.textContent = 'Simulando'; }
+            else { badge.classList.remove('running'); text.textContent = 'Detenido'; }
             document.getElementById('btnIniciar').disabled = data.corriendo;
             document.getElementById('btnDetener').disabled = !data.corriendo;
         });
-
         socket.on('stats', (data) => {
             document.getElementById('totalEnviadas').textContent = data.totalEnviadas || 0;
-            if (data.ultimaLectura) {
-                const fecha = new Date(data.ultimaLectura);
-                document.getElementById('ultimaLectura').textContent = fecha.toLocaleTimeString('es-SV');
-            }
+            if (data.ultimaLectura) document.getElementById('ultimaLectura').textContent = new Date(data.ultimaLectura).toLocaleTimeString('es-SV');
         });
-
         socket.on('config-updated', (config) => {
             document.getElementById('intervalo').value = config.INTERVALO_MS / 1000;
             document.getElementById('intervaloActual').textContent = (config.INTERVALO_MS / 1000) + 's';
@@ -805,167 +336,105 @@
             document.getElementById('factorPico').value = config.FACTOR_PICO;
             document.getElementById('factorFinSemanaVal').value = config.FACTOR_FIN_SEMANA;
         });
-
         socket.on('puntos', (puntos) => {
             document.getElementById('puntosCount').textContent = puntos.filter(p => p.activo).length;
             renderizarPuntos(puntos);
         });
-
-        socket.on('lecturas', (lecturas) => {
-            renderizarLecturas(lecturas);
-        });
-
-        socket.on('log', (data) => {
-            agregarLog(data.tipo, data.mensaje);
-        });
-
-        // Funciones UI
-        function actualizarStatus(corriendo) {
-            const badge = document.getElementById('statusBadge');
-            const text = document.getElementById('statusText');
-            
-            if (corriendo) {
-                badge.className = 'status-badge online';
-                text.textContent = 'Simulando';
-            } else {
-                badge.className = 'status-badge offline';
-                text.textContent = 'Detenido';
-            }
-        }
+        socket.on('lecturas', (lecturas) => { renderizarLecturas(lecturas); });
+        socket.on('log', (data) => { agregarLog(data.tipo, data.mensaje); });
 
         function cambiarModo(modo) {
             modoActual = modo;
-            
-            document.querySelectorAll('.mode-tab').forEach(tab => {
-                tab.classList.toggle('active', tab.dataset.mode === modo);
-            });
-            
+            document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.mode === modo));
             document.getElementById('realtimeConfig').classList.toggle('active', modo === 'realtime');
             document.getElementById('historicoConfig').classList.toggle('active', modo === 'historico');
         }
-
         function renderizarPuntos(puntos) {
             const grid = document.getElementById('puntosGrid');
-            
-            if (puntos.length === 0) {
-                grid.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-satellite-dish"></i>
-                        <p>No hay puntos configurados</p>
-                    </div>
-                `;
-                return;
-            }
-            
+            if (puntos.length === 0) { grid.innerHTML = '<div class="empty-state"><i class="fas fa-satellite-dish"></i><p>Sin puntos</p></div>'; return; }
             grid.innerHTML = puntos.map(p => `
-                <div class="point-chip ${p.activo ? 'active' : 'inactive'}">
+                <div class="point-chip ${p.activo ? 'active' : 'inactive'}" onclick="togglePunto('${p.id}')" title="Click para ${p.activo ? 'desactivar' : 'activar'}">
                     <div class="id">${p.id}</div>
                     <div class="name">${p.nombre || p.id}</div>
+                    <div class="power-icon"><i class="fas fa-power-off"></i></div>
+                    <div class="loading-spinner"><i class="fas fa-spinner"></i></div>
                 </div>
             `).join('');
         }
-
-        function renderizarLecturas(lecturas) {
-            const tbody = document.getElementById('monitorBody');
+        
+        async function togglePunto(id) {
+            const chip = document.querySelector(`.point-chip[onclick*="${id}"]`);
+            if (chip) chip.classList.add('loading');
             
-            const nuevasFilas = lecturas.map(l => `
-                <tr class="animate-in">
-                    <td><strong>${l.id_punto}</strong></td>
-                    <td>${l.consumo_kwh.toFixed(2)} kWh</td>
-                    <td>
-                        <span class="status-pill ${l.estado}">
-                            <span class="dot"></span>
-                            ${l.estado}
-                        </span>
-                    </td>
-                    <td>${l.fechaFormateada || new Date(l.fecha).toLocaleTimeString('es-SV')}</td>
-                </tr>
-            `).join('');
-            
-            // Mantener máximo 20 filas
-            const filasActuales = tbody.innerHTML;
-            tbody.innerHTML = nuevasFilas + filasActuales;
-            
-            const filas = tbody.querySelectorAll('tr');
-            if (filas.length > 20) {
-                for (let i = 20; i < filas.length; i++) {
-                    filas[i].remove();
+            try {
+                const resp = await fetch(`/api/puntos/${id}/toggle`, { method: 'POST' });
+                const data = await resp.json();
+                if (!data.success) {
+                    agregarLog('error', `❌ ${data.message}`);
                 }
+            } catch (error) {
+                agregarLog('error', `❌ Error: ${error.message}`);
+            } finally {
+                if (chip) chip.classList.remove('loading');
             }
         }
-
+        
+        async function toggleAllPuntos(activo) {
+            agregarLog('info', `${activo ? '🟢' : '⚫'} ${activo ? 'Activando' : 'Desactivando'} todos los puntos...`);
+            try {
+                const resp = await fetch('/api/puntos/toggle-all', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ activo })
+                });
+                const data = await resp.json();
+                if (!data.success) agregarLog('error', `❌ ${data.message}`);
+            } catch (error) {
+                agregarLog('error', `❌ Error: ${error.message}`);
+            }
+        }
+        function renderizarLecturas(lecturas) {
+            const tbody = document.getElementById('monitorBody');
+            const nuevas = lecturas.map(l => `<tr class="animate-in"><td><strong>${l.id_punto}</strong></td><td>${l.consumo_kwh.toFixed(2)} kWh</td><td><span class="status-pill ${l.estado}"><span class="dot"></span>${l.estado}</span></td><td>${l.fechaFormateada || new Date(l.fecha).toLocaleTimeString('es-SV')}</td></tr>`).join('');
+            tbody.innerHTML = nuevas + tbody.innerHTML;
+            const filas = tbody.querySelectorAll('tr');
+            if (filas.length > 15) for (let i = 15; i < filas.length; i++) filas[i].remove();
+        }
         function agregarLog(tipo, mensaje) {
             const container = document.getElementById('logsContainer');
             const hora = new Date().toLocaleTimeString('es-SV');
-            
             const entry = document.createElement('div');
             entry.className = `log-entry ${tipo}`;
-            entry.innerHTML = `
-                <span class="time">[${hora}]</span>
-                <span class="msg">${mensaje}</span>
-            `;
-            
+            entry.innerHTML = `<span class="time">[${hora}]</span><span class="msg">${mensaje}</span>`;
             container.appendChild(entry);
             container.scrollTop = container.scrollHeight;
         }
+        function limpiarLogs() { document.getElementById('logsContainer').innerHTML = ''; agregarLog('info', '🧹 Logs limpiados'); }
 
-        function limpiarLogs() {
-            document.getElementById('logsContainer').innerHTML = '';
-            agregarLog('info', '🧹 Logs limpiados');
-        }
-
-        // Acciones
         async function iniciarSimulador() {
-            // Guardar config primero
             const config = {
                 intervalo: parseInt(document.getElementById('intervalo').value),
                 simularPicos: document.getElementById('simularPicos').checked,
                 factorPico: parseFloat(document.getElementById('factorPico').value),
                 factorFinSemana: parseFloat(document.getElementById('factorFinSemanaVal').value)
             };
-            
             if (modoActual === 'historico') {
-                const fechaInicio = document.getElementById('fechaInicio').value;
-                const fechaFin = document.getElementById('fechaFin').value;
-                
-                if (!fechaInicio) {
-                    agregarLog('error', '❌ Selecciona una fecha de inicio');
-                    return;
-                }
-                
-                config.fechaInicio = fechaInicio.replace('T', ' ') + ':00';
-                config.fechaFin = fechaFin ? fechaFin.replace('T', ' ') + ':00' : null;
-            } else {
-                config.fechaInicio = null;
-                config.fechaFin = null;
-            }
-            
-            // Actualizar config
-            await fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(config)
-            });
-            
-            // Iniciar
+                const fi = document.getElementById('fechaInicio').value;
+                const ff = document.getElementById('fechaFin').value;
+                if (!fi) { agregarLog('error', '❌ Selecciona fecha inicio'); return; }
+                config.fechaInicio = fi.replace('T', ' ') + ':00';
+                config.fechaFin = ff ? ff.replace('T', ' ') + ':00' : null;
+            } else { config.fechaInicio = null; config.fechaFin = null; }
+            await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
             const resp = await fetch('/api/iniciar', { method: 'POST' });
             const data = await resp.json();
-            
-            if (!data.success) {
-                agregarLog('error', `❌ ${data.message}`);
-            }
+            if (!data.success) agregarLog('error', `❌ ${data.message}`);
         }
+        async function detenerSimulador() { await fetch('/api/detener', { method: 'POST' }); }
 
-        async function detenerSimulador() {
-            await fetch('/api/detener', { method: 'POST' });
-        }
-
-        // Inicialización
         document.addEventListener('DOMContentLoaded', () => {
-            // Establecer fecha por defecto para histórico
             const ahora = new Date();
             const hace7dias = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000);
-            
             document.getElementById('fechaInicio').value = hace7dias.toISOString().slice(0, 16);
             document.getElementById('fechaFin').value = ahora.toISOString().slice(0, 16);
         });

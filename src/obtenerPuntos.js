@@ -19,9 +19,12 @@ import { db } from "./firebase.js";
 export async function obtenerPuntos() {
   const snap = await getDocs(collection(db, "puntos_monitoreo"));
   
-  return snap.docs.map(doc => {
-    const data = doc.data();
+  return snap.docs.map(docSnap => {
+    const data = docSnap.data();
     return {
+      // ID del documento en Firestore (necesario para actualizar)
+      docId: docSnap.id,
+      
       // Identificación
       id: data.id,
       nombre: data.nombre || `Punto ${data.id}`,

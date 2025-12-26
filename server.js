@@ -3,11 +3,13 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { loginSimulador } from './src/auth.js';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
+import { auth, db } from './src/firebase.js';
 import { obtenerPuntos } from './src/obtenerPuntos.js';
 import { generarLectura } from './src/generador.js';
-import { enviarLectura, formatearLecturaLog } from './src/envio.js';
-import { CONFIG, validarConfiguracion, parsearFecha } from './config/config.js';
+import { enviarLectura } from './src/envio.js';
+import { CONFIG, parsearFecha } from './config/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,6 +22,7 @@ const io = new Server(server);
 let simuladorState = {
     corriendo: false,
     autenticado: false,
+    usuarioEmail: null,
     puntos: [],
     lecturas: [],
     totalEnviadas: 0,
@@ -32,7 +35,98 @@ let simuladorState = {
 app.use(express.static(join(__dirname, 'public')));
 app.use(express.json());
 
-// API endpoints
+// ============================================
+// API: LOGIN CON FIREBASE AUTH
+// ============================================
+app.post('/api/login', async (req, res) => {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Email y contraseña son requeridos' 
+        });
+    }
+    
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        simuladorState.autenticado = true;
+        simuladorState.usuarioEmail = user.email;
+        
+        io.emit('log', { tipo: 'success', mensaje: `✅ Login exitoso: ${user.email}` });
+        io.emit('auth-status', { 
+            autenticado: true, 
+            email: user.email 
+        });
+        
+        console.log(`✅ Usuario autenticado: ${user.email}`);
+        
+        res.json({ 
+            success: true, 
+            email: user.email,
+            message: 'Autenticación exitosa'
+        });
+        
+    } catch (error) {
+        console.error('❌ Error de login:', error.code);
+        
+        let mensaje = 'Error de autenticación';
+        switch (error.code) {
+            case 'auth/invalid-email':
+                mensaje = 'El correo electrónico no es válido';
+                break;
+            case 'auth/user-not-found':
+                mensaje = 'No existe una cuenta con este correo';
+                break;
+            case 'auth/wrong-password':
+                mensaje = 'Contraseña incorrecta';
+                break;
+            case 'auth/invalid-credential':
+                mensaje = 'Credenciales inválidas';
+                break;
+            case 'auth/too-many-requests':
+                mensaje = 'Demasiados intentos. Intenta más tarde';
+                break;
+            default:
+                mensaje = error.message;
+        }
+        
+        io.emit('log', { tipo: 'error', mensaje: `❌ Login fallido: ${mensaje}` });
+        
+        res.status(401).json({ 
+            success: false, 
+            message: mensaje 
+        });
+    }
+});
+
+app.post('/api/logout', (req, res) => {
+    simuladorState.autenticado = false;
+    simuladorState.usuarioEmail = null;
+    
+    // Detener simulador si está corriendo
+    if (simuladorState.corriendo) {
+        detenerSimulador();
+    }
+    
+    io.emit('auth-status', { autenticado: false, email: null });
+    io.emit('log', { tipo: 'info', mensaje: '👋 Sesión cerrada' });
+    
+    res.json({ success: true });
+});
+
+app.get('/api/auth-status', (req, res) => {
+    res.json({
+        autenticado: simuladorState.autenticado,
+        email: simuladorState.usuarioEmail
+    });
+});
+
+// ============================================
+// API: ESTADO Y CONFIGURACIÓN
+// ============================================
 app.get('/api/status', (req, res) => {
     res.json({
         corriendo: simuladorState.corriendo,
@@ -45,6 +139,95 @@ app.get('/api/status', (req, res) => {
 
 app.get('/api/puntos', (req, res) => {
     res.json(simuladorState.puntos);
+});
+
+// ============================================
+// API: TOGGLE PUNTO (ENCENDER/APAGAR)
+// ============================================
+app.post('/api/puntos/:id/toggle', async (req, res) => {
+    // Verificar autenticación
+    if (!simuladorState.autenticado) {
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Debes iniciar sesión primero' 
+        });
+    }
+    
+    const puntoId = req.params.id;
+    
+    try {
+        // Buscar el punto en el estado local
+        const punto = simuladorState.puntos.find(p => p.id === puntoId);
+        
+        if (!punto) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Punto no encontrado' 
+            });
+        }
+        
+        // Nuevo estado (toggle)
+        const nuevoEstado = !punto.activo;
+        
+        // Actualizar en Firestore
+        const puntoRef = doc(db, 'puntos_monitoreo', punto.docId);
+        await updateDoc(puntoRef, { activo: nuevoEstado });
+        
+        // Actualizar estado local
+        punto.activo = nuevoEstado;
+        
+        // Notificar a todos los clientes
+        io.emit('punto-actualizado', { id: puntoId, activo: nuevoEstado });
+        io.emit('puntos', simuladorState.puntos);
+        io.emit('log', { 
+            tipo: nuevoEstado ? 'success' : 'warning', 
+            mensaje: `${nuevoEstado ? '🟢' : '⚫'} Punto ${puntoId} ${nuevoEstado ? 'ACTIVADO' : 'DESACTIVADO'}` 
+        });
+        
+        console.log(`${nuevoEstado ? '🟢' : '⚫'} Punto ${puntoId} → ${nuevoEstado ? 'activo' : 'inactivo'}`);
+        
+        res.json({ 
+            success: true, 
+            id: puntoId, 
+            activo: nuevoEstado 
+        });
+        
+    } catch (error) {
+        console.error('❌ Error actualizando punto:', error);
+        io.emit('log', { tipo: 'error', mensaje: `❌ Error al actualizar ${puntoId}: ${error.message}` });
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
+
+// Endpoint para actualizar múltiples puntos a la vez
+app.post('/api/puntos/toggle-all', async (req, res) => {
+    if (!simuladorState.autenticado) {
+        return res.status(401).json({ success: false, message: 'No autenticado' });
+    }
+    
+    const { activo } = req.body; // true = activar todos, false = desactivar todos
+    
+    try {
+        for (const punto of simuladorState.puntos) {
+            const puntoRef = doc(db, 'puntos_monitoreo', punto.docId);
+            await updateDoc(puntoRef, { activo: activo });
+            punto.activo = activo;
+        }
+        
+        io.emit('puntos', simuladorState.puntos);
+        io.emit('log', { 
+            tipo: activo ? 'success' : 'warning', 
+            mensaje: `${activo ? '🟢' : '⚫'} Todos los puntos ${activo ? 'ACTIVADOS' : 'DESACTIVADOS'}` 
+        });
+        
+        res.json({ success: true, activo });
+        
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 });
 
 app.get('/api/lecturas', (req, res) => {
@@ -66,18 +249,19 @@ app.post('/api/config', (req, res) => {
 });
 
 app.post('/api/iniciar', async (req, res) => {
+    // Verificar autenticación
+    if (!simuladorState.autenticado) {
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Debes iniciar sesión primero' 
+        });
+    }
+    
     if (simuladorState.corriendo) {
         return res.json({ success: false, message: 'El simulador ya está corriendo' });
     }
     
     try {
-        // Autenticar si no lo está
-        if (!simuladorState.autenticado) {
-            await loginSimulador();
-            simuladorState.autenticado = true;
-            io.emit('log', { tipo: 'success', mensaje: '✅ Autenticado con Firebase' });
-        }
-        
         // Obtener puntos
         simuladorState.puntos = await obtenerPuntos();
         io.emit('log', { tipo: 'info', mensaje: `📍 ${simuladorState.puntos.length} puntos cargados` });
@@ -197,6 +381,12 @@ function detenerSimulador() {
 // Socket.IO conexiones
 io.on('connection', (socket) => {
     console.log('🔌 Cliente conectado');
+    
+    // Enviar estado de autenticación
+    socket.emit('auth-status', {
+        autenticado: simuladorState.autenticado,
+        email: simuladorState.usuarioEmail
+    });
     
     // Enviar estado actual
     socket.emit('status', { 
