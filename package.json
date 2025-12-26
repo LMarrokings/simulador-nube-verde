@@ -1,0 +1,26 @@
+{
+  "name": "simulador-nube-verde-web",
+  "version": "2.0.0",
+  "description": "Simulador IoT con interfaz web para Nube Verde",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "simulador": "node simulador.js"
+  },
+  "keywords": [
+    "iot",
+    "firebase",
+    "simulador",
+    "nube-verde",
+    "energia"
+  ],
+  "author": "Grupo 6 - ESIT",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.22.1",
+    "firebase": "^11.1.0",
+    "socket.io": "^4.8.3"
+  }
+}
