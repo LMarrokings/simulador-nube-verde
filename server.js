@@ -9,7 +9,37 @@ import { auth, db } from './src/firebase.js';
 import { obtenerPuntos } from './src/obtenerPuntos.js';
 import { generarLectura } from './src/generador.js';
 import { enviarLectura } from './src/envio.js';
-import { CONFIG, parsearFecha } from './config/config.js';
+import { CONFIG, parsearFecha as parsearFechaOriginal } from './config/config.js';
+
+// ============================================
+// FUNCIÓN MEJORADA PARA PARSEAR FECHAS
+// ============================================
+function parsearFecha(fechaStr) {
+  if (!fechaStr) return null;
+  
+  // Si ya es un objeto Date, devolverlo
+  if (fechaStr instanceof Date) return fechaStr;
+  
+  // Convertir a string por si acaso
+  fechaStr = String(fechaStr).trim();
+  
+  // Si está vacío después de trim, retornar null
+  if (!fechaStr) return null;
+  
+  // Reemplazar espacio por T para ISO 8601
+  const fechaISO = fechaStr.replace(" ", "T");
+  
+  // Crear fecha
+  const fecha = new Date(fechaISO);
+  
+  // Validar que la fecha es válida
+  if (isNaN(fecha.getTime())) {
+    console.error('❌ Error parseando fecha:', fechaStr);
+    return null;
+  }
+  
+  return fecha;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -586,7 +616,7 @@ function iniciarServidor(puerto) {
         .on('listening', () => {
             console.log(`
 🌿 ═══════════════════════════════════════════════════════════
-🌿   SIMULADOR NUBE VERDE - Interfaz Web
+🌿   SIMULADOR NUBE VERDE - Interfaz Web (MEJORADO)
 🌿   Abre tu navegador en: http://localhost:${puerto}
 🌿 ═══════════════════════════════════════════════════════════
             `);
