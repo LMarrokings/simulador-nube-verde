@@ -66,6 +66,17 @@
         .status-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; animation: pulse 2s infinite; }
         .status-badge.running .dot { background: #4ade80; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        /* MEJORA: Firebase Status Indicator */
+        .firebase-status { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 50px; font-size: 0.75rem; background: rgba(255,255,255,0.15); }
+        .firebase-status.healthy { background: rgba(74, 222, 128, 0.2); }
+        .firebase-status.unhealthy { background: rgba(239, 68, 68, 0.2); }
+        .firebase-status .dot { width: 6px; height: 6px; border-radius: 50%; }
+        .firebase-status.healthy .dot { background: #4ade80; }
+        .firebase-status.unhealthy .dot { background: #ef4444; }
+        
+        /* MEJORA: Server Stats */
+        .server-stats { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 50px; font-size: 0.75rem; background: rgba(255,255,255,0.15); color: white; }
 
         .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
@@ -115,6 +126,10 @@
         .mode-tab.active { background: var(--primary); color: white; }
         .mode-content { display: none; }
         .mode-content.active { display: block; }
+        
+        /* MEJORA: Alerta de validación */
+        .validation-alert { background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); color: #fbbf24; padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.85rem; margin-bottom: 1rem; display: none; }
+        .validation-alert.show { display: block; }
 
         .monitor-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         .monitor-table th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; border-bottom: 1px solid var(--border); }
@@ -153,6 +168,11 @@
         .points-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.5rem; }
         .points-actions { display: flex; gap: 0.5rem; }
         .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.75rem; border-radius: 6px; }
+        
+        /* MEJORA: Barra de progreso para modo histórico */
+        .progress-bar-container { background: var(--bg-input); border-radius: 10px; overflow: hidden; margin-bottom: 1rem; display: none; }
+        .progress-bar-container.show { display: block; }
+        .progress-bar { height: 30px; background: var(--gradient-1); display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem; font-weight: 600; transition: width 0.3s ease; }
 
         .empty-state { text-align: center; padding: 2rem; color: var(--text-secondary); }
         .empty-state i { font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5; }
@@ -211,6 +231,8 @@
             </div>
             <div class="header-right">
                 <div id="statusBadge" class="status-badge"><span class="dot"></span><span id="statusText">Detenido</span></div>
+                <div id="firebaseStatus" class="firebase-status healthy"><span class="dot"></span><span>Firebase</span></div>
+                <div id="serverStats" class="server-stats"><i class="fas fa-users"></i> <span id="userCount">0</span></div>
                 <div class="user-info"><i class="fas fa-user-circle"></i><span id="userEmail">usuario</span></div>
                 <button class="btn-logout" onclick="cerrarSesion()"><i class="fas fa-sign-out-alt"></i> Salir</button>
             </div>
@@ -222,9 +244,19 @@
                 <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-clock"></i></div><div class="stat-info"><h3 id="ultimaLectura">--:--:--</h3><p>Última Lectura</p></div></div>
                 <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-bolt"></i></div><div class="stat-info"><h3 id="intervaloActual">10s</h3><p>Intervalo</p></div></div>
             </div>
+            
+            <!-- MEJORA: Barra de progreso histórico -->
+            <div id="progressBarContainer" class="progress-bar-container">
+                <div id="progressBar" class="progress-bar" style="width: 0%;">0%</div>
+            </div>
+            
             <div class="grid-2">
                 <div class="card">
                     <div class="card-header"><h2 class="card-title"><i class="fas fa-cog"></i> Configuración</h2></div>
+                    
+                    <!-- MEJORA: Alerta de validación -->
+                    <div id="validationAlert" class="validation-alert"></div>
+                    
                     <div class="mode-tabs">
                         <div class="mode-tab active" data-mode="realtime" onclick="cambiarModo('realtime')"><i class="fas fa-clock"></i> Tiempo Real</div>
                         <div class="mode-tab" data-mode="historico" onclick="cambiarModo('historico')"><i class="fas fa-calendar"></i> Histórico</div>
@@ -258,7 +290,7 @@
                         </div>
                     </div>
                     <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:0.75rem;"><i class="fas fa-info-circle"></i> Click en un punto para encender/apagar</p>
-                    <div id="puntosGrid" class="points-grid"><div class="empty-state"><i class="fas fa-satellite-dish"></i><p>Inicia el simulador</p></div></div>
+                    <div id="puntosGrid" class="points-grid"><div class="empty-state"><i class="fas fa-satellite-dish"></i><p>Esperando login...</p></div></div>
                 </div>
             </div>
             <div class="grid-2" style="margin-top:1rem;">
@@ -315,7 +347,7 @@
         }
         async function cerrarSesion() { await fetch('/api/logout', { method: 'POST' }); mostrarLogin(); }
 
-        socket.on('connect', () => { agregarLog('info', '🔌 Conectado al servidor'); });
+        socket.on('connect', () => { agregarLog('info', '📌 Conectado al servidor'); });
         socket.on('auth-status', (data) => { if (data.autenticado && data.email) mostrarApp(data.email); });
         socket.on('status', (data) => {
             const badge = document.getElementById('statusBadge');
@@ -342,13 +374,44 @@
         });
         socket.on('lecturas', (lecturas) => { renderizarLecturas(lecturas); });
         socket.on('log', (data) => { agregarLog(data.tipo, data.mensaje); });
+        
+        // MEJORA: Listeners de Firebase Status y Server Stats
+        socket.on('firebase-status', (data) => {
+            const indicator = document.getElementById('firebaseStatus');
+            if (data.healthy) {
+                indicator.classList.add('healthy');
+                indicator.classList.remove('unhealthy');
+            } else {
+                indicator.classList.remove('healthy');
+                indicator.classList.add('unhealthy');
+            }
+        });
+        
+        socket.on('server-stats', (data) => {
+            document.getElementById('userCount').textContent = data.usuarios || 0;
+        });
+        
+        // MEJORA: Listener de progreso histórico
+        socket.on('historico-progreso', (data) => {
+            const container = document.getElementById('progressBarContainer');
+            const bar = document.getElementById('progressBar');
+            container.classList.add('show');
+            bar.style.width = data.progreso + '%';
+            bar.textContent = `${data.progreso}% (${data.loteActual}/${data.totalLotes})`;
+        });
 
         function cambiarModo(modo) {
             modoActual = modo;
             document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.mode === modo));
             document.getElementById('realtimeConfig').classList.toggle('active', modo === 'realtime');
             document.getElementById('historicoConfig').classList.toggle('active', modo === 'historico');
+            
+            // Ocultar barra de progreso al cambiar a tiempo real
+            if (modo === 'realtime') {
+                document.getElementById('progressBarContainer').classList.remove('show');
+            }
         }
+        
         function renderizarPuntos(puntos) {
             const grid = document.getElementById('puntosGrid');
             if (puntos.length === 0) { grid.innerHTML = '<div class="empty-state"><i class="fas fa-satellite-dish"></i><p>Sin puntos</p></div>'; return; }
@@ -393,6 +456,7 @@
                 agregarLog('error', `❌ Error: ${error.message}`);
             }
         }
+        
         function renderizarLecturas(lecturas) {
             const tbody = document.getElementById('monitorBody');
             const nuevas = lecturas.map(l => `<tr class="animate-in"><td><strong>${l.id_punto}</strong></td><td>${l.consumo_kwh.toFixed(2)} kWh</td><td><span class="status-pill ${l.estado}"><span class="dot"></span>${l.estado}</span></td><td>${l.fechaFormateada || new Date(l.fecha).toLocaleTimeString('es-SV')}</td></tr>`).join('');
@@ -400,6 +464,7 @@
             const filas = tbody.querySelectorAll('tr');
             if (filas.length > 15) for (let i = 15; i < filas.length; i++) filas[i].remove();
         }
+        
         function agregarLog(tipo, mensaje) {
             const container = document.getElementById('logsContainer');
             const hora = new Date().toLocaleTimeString('es-SV');
@@ -409,28 +474,79 @@
             container.appendChild(entry);
             container.scrollTop = container.scrollHeight;
         }
+        
         function limpiarLogs() { document.getElementById('logsContainer').innerHTML = ''; agregarLog('info', '🧹 Logs limpiados'); }
 
+        // MEJORA: Validación mejorada al iniciar
         async function iniciarSimulador() {
+            const validationAlert = document.getElementById('validationAlert');
+            validationAlert.classList.remove('show');
+            
             const config = {
                 intervalo: parseInt(document.getElementById('intervalo').value),
                 simularPicos: document.getElementById('simularPicos').checked,
                 factorPico: parseFloat(document.getElementById('factorPico').value),
                 factorFinSemana: parseFloat(document.getElementById('factorFinSemanaVal').value)
             };
+            
             if (modoActual === 'historico') {
                 const fi = document.getElementById('fechaInicio').value;
                 const ff = document.getElementById('fechaFin').value;
-                if (!fi) { agregarLog('error', '❌ Selecciona fecha inicio'); return; }
-                config.fechaInicio = fi.replace('T', ' ') + ':00';
-                config.fechaFin = ff ? ff.replace('T', ' ') + ':00' : null;
-            } else { config.fechaInicio = null; config.fechaFin = null; }
-            await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
+                
+                if (!fi) { 
+                    validationAlert.textContent = '⚠️ Selecciona fecha inicio';
+                    validationAlert.classList.add('show');
+                    agregarLog('error', '❌ Selecciona fecha inicio'); 
+                    return; 
+                }
+                
+                if (fi && ff) {
+                    const inicio = new Date(fi);
+                    const fin = new Date(ff);
+                    
+                    if (inicio >= fin) {
+                        validationAlert.textContent = '⚠️ La fecha de inicio debe ser anterior a la fecha fin';
+                        validationAlert.classList.add('show');
+                        agregarLog('error', '❌ Fecha inicio debe ser anterior a fecha fin');
+                        return;
+                    }
+                }
+                
+                config.fechaInicio = fi;
+                config.fechaFin = ff || null;
+            } else { 
+                config.fechaInicio = null; 
+                config.fechaFin = null; 
+                
+                // Ocultar barra de progreso en tiempo real
+                document.getElementById('progressBarContainer').classList.remove('show');
+            }
+            
+            const configResp = await fetch('/api/config', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(config) 
+            });
+            
+            const configData = await configResp.json();
+            
+            if (!configData.success && configData.errores) {
+                validationAlert.textContent = '⚠️ ' + configData.errores.join('. ');
+                validationAlert.classList.add('show');
+                configData.errores.forEach(err => agregarLog('error', `❌ ${err}`));
+                return;
+            }
+            
             const resp = await fetch('/api/iniciar', { method: 'POST' });
             const data = await resp.json();
             if (!data.success) agregarLog('error', `❌ ${data.message}`);
         }
-        async function detenerSimulador() { await fetch('/api/detener', { method: 'POST' }); }
+        
+        async function detenerSimulador() { 
+            await fetch('/api/detener', { method: 'POST' }); 
+            // Ocultar barra de progreso
+            document.getElementById('progressBarContainer').classList.remove('show');
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             const ahora = new Date();

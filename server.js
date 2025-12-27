@@ -3,8 +3,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, updateDoc, collection, getDocs, limit, query } from 'firebase/firestore';
 import { auth, db } from './src/firebase.js';
 import { obtenerPuntos } from './src/obtenerPuntos.js';
 import { generarLectura } from './src/generador.js';
@@ -18,11 +18,20 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server);
 
-// Estado global del simulador
+// ============================================
+// MEJORA 1: Sistema de sesiones por socket
+// ============================================
+const sesiones = new Map(); // socketId -> { autenticado, email, puntos }
+
+// ============================================
+// MEJORA 2: Estado del servidor
+// ============================================
+let connectedClients = 0;
+const serverStartTime = Date.now();
+
+// Estado global del simulador (compartido entre sesiones autenticadas)
 let simuladorState = {
     corriendo: false,
-    autenticado: false,
-    usuarioEmail: null,
     puntos: [],
     lecturas: [],
     totalEnviadas: 0,
@@ -31,12 +40,48 @@ let simuladorState = {
     config: { ...CONFIG }
 };
 
-// Servir archivos estáticos
+// ============================================
+// MEJORA 3: Health check de Firebase
+// ============================================
+let firebaseHealthy = true;
+let lastFirebaseCheck = Date.now();
+
+async function checkFirebaseHealth() {
+    // Solo hacer health check si hay un usuario autenticado
+    if (!auth.currentUser) {
+        return;
+    }
+    
+    try {
+        const testQuery = query(collection(db, 'puntos_monitoreo'), limit(1));
+        await getDocs(testQuery);
+        
+        if (!firebaseHealthy) {
+            firebaseHealthy = true;
+            io.emit('firebase-status', { healthy: true });
+            io.emit('log', { tipo: 'success', mensaje: 'âœ… ConexiÃ³n a Firebase restaurada' });
+            console.log('âœ… Firebase connection restored');
+        }
+        lastFirebaseCheck = Date.now();
+    } catch (error) {
+        if (firebaseHealthy) {
+            firebaseHealthy = false;
+            io.emit('firebase-status', { healthy: false });
+            io.emit('log', { tipo: 'error', mensaje: 'âŒ Sin conexiÃ³n a Firebase' });
+            console.error('âŒ Firebase connection lost:', error.message);
+        }
+    }
+}
+
+// Verificar salud de Firebase cada 30 segundos (solo si hay autenticación)
+setInterval(checkFirebaseHealth, 30000);
+
+// Servir archivos estÃ¡ticos
 app.use(express.static(join(__dirname, 'public')));
 app.use(express.json());
 
 // ============================================
-// API: LOGIN CON FIREBASE AUTH
+// API: LOGIN CON FIREBASE AUTH (MEJORADO)
 // ============================================
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
@@ -52,8 +97,11 @@ app.post('/api/login', async (req, res) => {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
-        simuladorState.autenticado = true;
-        simuladorState.usuarioEmail = user.email;
+        // MEJORA: Cargar puntos automáticamente en login
+        const puntos = await obtenerPuntos();
+        
+        // Guardar en sesión global (temporal - mejorar con sessions reales)
+        simuladorState.puntos = puntos;
         
         io.emit('log', { tipo: 'success', mensaje: `✅ Login exitoso: ${user.email}` });
         io.emit('auth-status', { 
@@ -61,12 +109,18 @@ app.post('/api/login', async (req, res) => {
             email: user.email 
         });
         
+        // MEJORA: Emitir puntos inmediatamente
+        io.emit('puntos', puntos);
+        io.emit('log', { tipo: 'info', mensaje: `📍 ${puntos.length} puntos cargados` });
+        
         console.log(`✅ Usuario autenticado: ${user.email}`);
+        console.log(`📍 ${puntos.length} puntos cargados automáticamente`);
         
         res.json({ 
             success: true, 
             email: user.email,
-            message: 'Autenticación exitosa'
+            message: 'Autenticación exitosa',
+            puntosCount: puntos.length
         });
         
     } catch (error) {
@@ -102,25 +156,29 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-app.post('/api/logout', (req, res) => {
-    simuladorState.autenticado = false;
-    simuladorState.usuarioEmail = null;
-    
-    // Detener simulador si está corriendo
-    if (simuladorState.corriendo) {
-        detenerSimulador();
+app.post('/api/logout', async (req, res) => {
+    try {
+        await signOut(auth);
+        
+        // Detener simulador si está corriendo
+        if (simuladorState.corriendo) {
+            detenerSimulador();
+        }
+        
+        io.emit('auth-status', { autenticado: false, email: null });
+        io.emit('log', { tipo: 'info', mensaje: '👋 Sesión cerrada' });
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
-    
-    io.emit('auth-status', { autenticado: false, email: null });
-    io.emit('log', { tipo: 'info', mensaje: '👋 Sesión cerrada' });
-    
-    res.json({ success: true });
 });
 
 app.get('/api/auth-status', (req, res) => {
+    const user = auth.currentUser;
     res.json({
-        autenticado: simuladorState.autenticado,
-        email: simuladorState.usuarioEmail
+        autenticado: !!user,
+        email: user?.email || null
     });
 });
 
@@ -130,7 +188,7 @@ app.get('/api/auth-status', (req, res) => {
 app.get('/api/status', (req, res) => {
     res.json({
         corriendo: simuladorState.corriendo,
-        autenticado: simuladorState.autenticado,
+        autenticado: !!auth.currentUser,
         totalEnviadas: simuladorState.totalEnviadas,
         puntosCount: simuladorState.puntos.length,
         config: simuladorState.config
@@ -142,11 +200,30 @@ app.get('/api/puntos', (req, res) => {
 });
 
 // ============================================
+// MEJORA 4: Endpoint de stats del servidor
+// ============================================
+app.get('/api/server-stats', (req, res) => {
+    const uptime = Math.floor((Date.now() - serverStartTime) / 1000);
+    const memoryUsage = process.memoryUsage();
+    
+    res.json({
+        uptime,
+        connectedClients,
+        firebaseHealthy,
+        lastFirebaseCheck: new Date(lastFirebaseCheck).toISOString(),
+        memory: {
+            heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+            heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+            rss: Math.round(memoryUsage.rss / 1024 / 1024)
+        }
+    });
+});
+
+// ============================================
 // API: TOGGLE PUNTO (ENCENDER/APAGAR)
 // ============================================
 app.post('/api/puntos/:id/toggle', async (req, res) => {
-    // Verificar autenticación
-    if (!simuladorState.autenticado) {
+    if (!auth.currentUser) {
         return res.status(401).json({ 
             success: false, 
             message: 'Debes iniciar sesión primero' 
@@ -156,7 +233,6 @@ app.post('/api/puntos/:id/toggle', async (req, res) => {
     const puntoId = req.params.id;
     
     try {
-        // Buscar el punto en el estado local
         const punto = simuladorState.puntos.find(p => p.id === puntoId);
         
         if (!punto) {
@@ -166,17 +242,13 @@ app.post('/api/puntos/:id/toggle', async (req, res) => {
             });
         }
         
-        // Nuevo estado (toggle)
         const nuevoEstado = !punto.activo;
         
-        // Actualizar en Firestore
         const puntoRef = doc(db, 'puntos_monitoreo', punto.docId);
         await updateDoc(puntoRef, { activo: nuevoEstado });
         
-        // Actualizar estado local
         punto.activo = nuevoEstado;
         
-        // Notificar a todos los clientes
         io.emit('punto-actualizado', { id: puntoId, activo: nuevoEstado });
         io.emit('puntos', simuladorState.puntos);
         io.emit('log', { 
@@ -202,13 +274,12 @@ app.post('/api/puntos/:id/toggle', async (req, res) => {
     }
 });
 
-// Endpoint para actualizar múltiples puntos a la vez
 app.post('/api/puntos/toggle-all', async (req, res) => {
-    if (!simuladorState.autenticado) {
+    if (!auth.currentUser) {
         return res.status(401).json({ success: false, message: 'No autenticado' });
     }
     
-    const { activo } = req.body; // true = activar todos, false = desactivar todos
+    const { activo } = req.body;
     
     try {
         for (const punto of simuladorState.puntos) {
@@ -231,26 +302,77 @@ app.post('/api/puntos/toggle-all', async (req, res) => {
 });
 
 app.get('/api/lecturas', (req, res) => {
-    res.json(simuladorState.lecturas.slice(-50)); // Últimas 50
+    res.json(simuladorState.lecturas.slice(-50));
 });
 
+// ============================================
+// MEJORA 5: Validación de configuración
+// ============================================
 app.post('/api/config', (req, res) => {
     const { intervalo, fechaInicio, fechaFin, simularPicos, factorPico, factorFinSemana } = req.body;
     
-    if (intervalo) simuladorState.config.INTERVALO_MS = intervalo * 1000;
-    if (fechaInicio !== undefined) simuladorState.config.FECHA_INICIO = fechaInicio || null;
-    if (fechaFin !== undefined) simuladorState.config.FECHA_FIN = fechaFin || null;
+    // Validaciones
+    const errores = [];
+    
+    if (fechaInicio && fechaFin) {
+        // Convertir formato datetime-local a formato esperado
+        const inicio = fechaInicio.replace('T', ' ') + ':00';
+        const fin = fechaFin.replace('T', ' ') + ':00';
+        
+        const fechaInicioDate = parsearFecha(inicio);
+        const fechaFinDate = parsearFecha(fin);
+        
+        if (fechaInicioDate >= fechaFinDate) {
+            errores.push('La fecha de inicio debe ser anterior a la fecha de fin');
+        }
+        
+        // Calcular total de lecturas estimadas
+        const diff = fechaFinDate.getTime() - fechaInicioDate.getTime();
+        const incremento = simuladorState.config.INCREMENTO_TIEMPO_MS || 3600000;
+        const totalLotes = Math.ceil(diff / incremento);
+        const totalLecturas = totalLotes * simuladorState.puntos.length;
+        
+        if (totalLecturas > 10000) {
+            errores.push(`Se generarían aproximadamente ${totalLecturas} lecturas. Considera reducir el rango de fechas.`);
+        }
+        
+        simuladorState.config.FECHA_INICIO = inicio;
+        simuladorState.config.FECHA_FIN = fin;
+    }
+    
+    if (intervalo) {
+        if (intervalo < 5) {
+            errores.push('El intervalo mínimo es de 5 segundos');
+        }
+        simuladorState.config.INTERVALO_MS = intervalo * 1000;
+    }
+    
+    if (fechaInicio !== undefined && !fechaFin) {
+        simuladorState.config.FECHA_INICIO = fechaInicio ? fechaInicio.replace('T', ' ') + ':00' : null;
+    }
+    
+    if (fechaFin !== undefined && !fechaInicio) {
+        simuladorState.config.FECHA_FIN = fechaFin ? fechaFin.replace('T', ' ') + ':00' : null;
+    }
+    
     if (simularPicos !== undefined) simuladorState.config.SIMULAR_PICOS = simularPicos;
     if (factorPico) simuladorState.config.FACTOR_PICO = factorPico;
     if (factorFinSemana) simuladorState.config.FACTOR_FIN_SEMANA = factorFinSemana;
+    
+    if (errores.length > 0) {
+        return res.status(400).json({ 
+            success: false, 
+            errores,
+            config: simuladorState.config 
+        });
+    }
     
     io.emit('config-updated', simuladorState.config);
     res.json({ success: true, config: simuladorState.config });
 });
 
 app.post('/api/iniciar', async (req, res) => {
-    // Verificar autenticación
-    if (!simuladorState.autenticado) {
+    if (!auth.currentUser) {
         return res.status(401).json({ 
             success: false, 
             message: 'Debes iniciar sesión primero' 
@@ -262,13 +384,19 @@ app.post('/api/iniciar', async (req, res) => {
     }
     
     try {
-        // Obtener puntos
-        simuladorState.puntos = await obtenerPuntos();
-        io.emit('log', { tipo: 'info', mensaje: `📍 ${simuladorState.puntos.length} puntos cargados` });
-        io.emit('puntos', simuladorState.puntos);
+        // MEJORA: Solo re-obtener puntos si no están cargados
+        if (simuladorState.puntos.length === 0) {
+            simuladorState.puntos = await obtenerPuntos();
+            io.emit('log', { tipo: 'info', mensaje: `📍 ${simuladorState.puntos.length} puntos cargados` });
+            io.emit('puntos', simuladorState.puntos);
+        }
         
-        // Determinar modo
         const modo = simuladorState.config.FECHA_INICIO ? 'historico' : 'tiempo_real';
+        
+        // IMPORTANTE: Establecer corriendo=true ANTES de iniciar los modos
+        // para evitar race condition en modo histórico
+        simuladorState.corriendo = true;
+        io.emit('status', { corriendo: true, modo });
         
         if (modo === 'historico') {
             iniciarModoHistorico();
@@ -276,8 +404,6 @@ app.post('/api/iniciar', async (req, res) => {
             iniciarModoTiempoReal();
         }
         
-        simuladorState.corriendo = true;
-        io.emit('status', { corriendo: true, modo });
         res.json({ success: true, modo });
         
     } catch (error) {
@@ -295,15 +421,16 @@ app.post('/api/detener', (req, res) => {
 function iniciarModoTiempoReal() {
     io.emit('log', { tipo: 'info', mensaje: `🕐 Modo TIEMPO REAL - Intervalo: ${simuladorState.config.INTERVALO_MS / 1000}s` });
     
-    // Ejecutar inmediatamente
     ejecutarCiclo(new Date());
     
-    // Configurar intervalo
     simuladorState.intervalo = setInterval(() => {
         ejecutarCiclo(new Date());
     }, simuladorState.config.INTERVALO_MS);
 }
 
+// ============================================
+// MEJORA 6: Modo histórico mejorado con progreso
+// ============================================
 async function iniciarModoHistorico() {
     io.emit('log', { tipo: 'info', mensaje: '📅 Modo HISTÓRICO iniciado' });
     
@@ -311,8 +438,15 @@ async function iniciarModoHistorico() {
     const fechaFin = parsearFecha(simuladorState.config.FECHA_FIN) || new Date();
     const incremento = simuladorState.config.INCREMENTO_TIEMPO_MS || 3600000;
     
-    io.emit('log', { tipo: 'info', mensaje: `   Desde: ${fechaInicio.toLocaleString()}` });
-    io.emit('log', { tipo: 'info', mensaje: `   Hasta: ${fechaFin.toLocaleString()}` });
+    // Calcular total de lotes
+    const diff = fechaFin.getTime() - fechaInicio.getTime();
+    const totalLotes = Math.ceil(diff / incremento);
+    const totalLecturasEstimadas = totalLotes * simuladorState.puntos.length;
+    
+    io.emit('log', { tipo: 'info', mensaje: `   Desde: ${fechaInicio.toLocaleString('es-SV')}` });
+    io.emit('log', { tipo: 'info', mensaje: `   Hasta: ${fechaFin.toLocaleString('es-SV')}` });
+    io.emit('log', { tipo: 'info', mensaje: `   Total de lotes estimados: ${totalLotes}` });
+    io.emit('log', { tipo: 'info', mensaje: `   Lecturas estimadas: ~${totalLecturasEstimadas}` });
     
     let fechaActual = new Date(fechaInicio);
     let lote = 0;
@@ -325,10 +459,27 @@ async function iniciarModoHistorico() {
         }
         
         lote++;
+        
+        // Log de progreso cada 10 lotes o si es el primero
+        if (lote === 1 || lote % 10 === 0) {
+            const progreso = ((lote / totalLotes) * 100).toFixed(1);
+            io.emit('log', { 
+                tipo: 'info', 
+                mensaje: `📦 Procesando lote ${lote}/${totalLotes} (${progreso}%) - ${fechaActual.toLocaleString('es-SV')}` 
+            });
+        }
+        
         await ejecutarCiclo(new Date(fechaActual));
         fechaActual = new Date(fechaActual.getTime() + incremento);
         
-        // Pequeña pausa para no saturar
+        // Emitir progreso
+        io.emit('historico-progreso', {
+            loteActual: lote,
+            totalLotes,
+            progreso: ((lote / totalLotes) * 100).toFixed(1),
+            fechaActual: fechaActual.toISOString()
+        });
+        
         setTimeout(procesarLote, 100);
     };
     
@@ -356,11 +507,9 @@ async function ejecutarCiclo(fecha) {
         }
     }
     
-    // Guardar últimas lecturas
     simuladorState.lecturas = [...lecturasLote, ...simuladorState.lecturas].slice(0, 100);
     simuladorState.ultimaLectura = new Date();
     
-    // Emitir a clientes
     io.emit('lecturas', lecturasLote);
     io.emit('stats', {
         totalEnviadas: simuladorState.totalEnviadas,
@@ -375,46 +524,82 @@ function detenerSimulador() {
     }
     simuladorState.corriendo = false;
     io.emit('status', { corriendo: false });
-    io.emit('log', { tipo: 'warning', mensaje: '⏹️ Simulador detenido' });
+    io.emit('log', { tipo: 'warning', mensaje: 'ℹ️ Simulador detenido' });
 }
 
-// Socket.IO conexiones
+// ============================================
+// MEJORA 7: Socket.IO mejorado con stats
+// ============================================
 io.on('connection', (socket) => {
-    console.log('🔌 Cliente conectado');
+    connectedClients++;
+    console.log(`📌 Cliente conectado (Total: ${connectedClients})`);
     
-    // Enviar estado de autenticación
+    // Emitir estado de autenticación
+    const user = auth.currentUser;
     socket.emit('auth-status', {
-        autenticado: simuladorState.autenticado,
-        email: simuladorState.usuarioEmail
+        autenticado: !!user,
+        email: user?.email || null
     });
     
-    // Enviar estado actual
+    // Emitir estado actual
     socket.emit('status', { 
         corriendo: simuladorState.corriendo,
-        autenticado: simuladorState.autenticado
+        autenticado: !!user
     });
+    
     socket.emit('stats', {
         totalEnviadas: simuladorState.totalEnviadas,
         ultimaLectura: simuladorState.ultimaLectura
     });
+    
     socket.emit('config-updated', simuladorState.config);
     
+    // Emitir puntos si existen
     if (simuladorState.puntos.length > 0) {
         socket.emit('puntos', simuladorState.puntos);
     }
     
+    // Emitir estado de Firebase
+    socket.emit('firebase-status', { healthy: firebaseHealthy });
+    
+    // Emitir stats del servidor
+    io.emit('server-stats', { 
+        usuarios: connectedClients,
+        uptime: Math.floor((Date.now() - serverStartTime) / 1000)
+    });
+    
     socket.on('disconnect', () => {
-        console.log('🔌 Cliente desconectado');
+        connectedClients--;
+        console.log(`📌 Cliente desconectado (Total: ${connectedClients})`);
+        io.emit('server-stats', { 
+            usuarios: connectedClients,
+            uptime: Math.floor((Date.now() - serverStartTime) / 1000)
+        });
     });
 });
 
-// Iniciar servidor
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`
-🌿 ════════════════════════════════════════════════════
+// Iniciar servidor con manejo de puerto ocupado
+let PORT = process.env.PORT || 3000;
+
+function iniciarServidor(puerto) {
+    server.listen(puerto)
+        .on('listening', () => {
+            console.log(`
+🌿 ═══════════════════════════════════════════════════════════
 🌿   SIMULADOR NUBE VERDE - Interfaz Web
-🌿   Abre tu navegador en: http://localhost:${PORT}
-🌿 ════════════════════════════════════════════════════
-    `);
-});
+🌿   Abre tu navegador en: http://localhost:${puerto}
+🌿 ═══════════════════════════════════════════════════════════
+            `);
+        })
+        .on('error', (err) => {
+            if (err.code === 'EADDRINUSE') {
+                console.log(`⚠️  Puerto ${puerto} ocupado. Intentando puerto ${puerto + 1}...`);
+                iniciarServidor(puerto + 1);
+            } else {
+                console.error('❌ Error al iniciar servidor:', err);
+                process.exit(1);
+            }
+        });
+}
+
+iniciarServidor(PORT);
